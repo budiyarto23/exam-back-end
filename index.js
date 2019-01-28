@@ -16,7 +16,7 @@ const conn = mysql.createConnection({
 app.use(cors());
 app.use(bodyParser.json());
 
-app.get('/', (reqq, res) => {
+app.get('/', (req, res) => {
     res.send('<h1>Haai</h1>')
 })
 
@@ -38,35 +38,78 @@ app.delete('/movie/:id', (req, res) => {
         res.send('data berhasil di hapus ');
     })
 })
-// API untuk insert data baru pada tabel movies, tapi masih bingung pakekya req.body. apa makanya langsung tembak pake string.
+
+// API untuk insert data baru pada tabel movies via postman dan tanpa front end + sudah di proteksi
+
 app.post('/movieinsert', (req, res) => {
-    var ins = {
-        // nama: "slenderman",
-        // tahun: 1990,
-        // description: "best horor in the world"
+    var data = req.body
+    var sql = `SELECT * FROM movies WHERE nama = '${data.nama}'`;
+    conn.query(sql, (err, results) => {
+        if (err) throw err;
+        if(results.length === 0) {
+            var sql = 'INSERT INTO movies SET ?';
+            conn.query(sql, data, (err, results) => {
+                if(err) throw err
+                res.send(results);
+            });
+        } else {
+            res.send('Data yang anda masukan sudah ada.');
+        }
+    });
+})
+
+// API insert unutk menghubungkan yang di front end
+
+app.post('/movieinsert', (req, res) => {
+    var listoforders = {
         nama: req.body.nama,
-        taun: req.body.tahun,
+        tahun: req.body.tahun,
         description: req.body.description,
     }
-    var sql = `insert into movies set ?`;
-    conn.query(sql, ins, (err, resulth) => {
+
+    var sql = `insert into movies set ? ;`
+    conn.query(sql, listoforders, (err, result) => {
         if (err) throw err;
-        res.send(resulth)
+        res.send(result)
+
     })
 })
-// API untuk edit movies 
+
+// API delete via front end
+
+app.delete('/delete/:id', (req, res) => {
+    var deleted = req.params.id;
+    var sql = `delete from movies where id = ${deleted};`;
+    conn.query(sql, (err, result) => {
+        if (err) throw err;
+        console.log(result);
+        res.send(result);
+    })
+})
+
+// API untuk edit movies vis postman belum dilengkapi dengan proteksi
 app.put('/movieedit/:id', (req, res) => {
     var par = req.params.id
-    var nama = req.body.nama;
-    var tahun = req.body.tahun;
-    var description = req.body.description
-    var sql = `update movies set nama = ${nama} and tahun =${tahun} and description = ${description} where id = ${par};`;
-    conn.query(sql, ins, (err, resulth) => {
+    var name = req.body
+    var sql = `UPDATE movies WHERE id = '${par}';`
+    conn.query(sql, name, (err, resulth) => {
         if (err) throw err;
         res.send(resulth)
     })
 })
 
+// API edit movie yang digunkan untuk front end
+
+app.put('/editcart/:id', (req, res) => {
+    var isiId = req.params.id;
+    var movedit = req.data
+    var sql = `update movies set ? where id = ${isiId};`;
+    conn.query(sql, movedit, (err, result) => {
+        if (err) throw err;
+        console.log(result);
+        res.send(result)
+    })
+})
 
 // API untuk menampilkan catgeory movie
 app.get('/categories', (req, res) => {
@@ -85,19 +128,57 @@ app.delete('/category/:cat', (req, res) => {
         res.send(`data berhasil dihapus dari category`)
     })
 })
-// API untuk insert kategory movies problemya masih sama lupa properti yang ada di req.body itu apa
-app.post('/categoryinsert/:cate', (req, res) => {
-    // var cat = {
-    //     // nama: 'Fantasi',
-        // nama: req.body,
-    // }
-    var cat = req.body.nama
-    var sql = `insert into categories set ?`;
-    conn.query(sql, cat, (err, result) => {
+// // API untuk insert data baru pada tabel movies via postman dan tanpa front end + sudah di proteksi
+app.post('/categoryinsert', (req, res) => {
+    var request = req.body
+    var sql = `select * FROM categories where nama = '${request.nama}'`;
+    conn.query(sql, (err, results) => {
+        if (err) throw err;
+        if(results.length === 0) {
+            var sql = 'insert into categories set ?';
+            conn.query(sql, request, (err, results) => {
+                if(err) throw err
+                res.send(results);
+            });
+        } else {
+            res.send('Data yang anda masukan sudah ada.');
+        }
+    });
+})
+
+// API untuk insert data via front end tanpa proteksi
+
+app.post('/categoryinsert', (req, res) => {
+    var insertcat = {
+        nama: req.body.nama,
+    }
+
+    var sql = `insert into categories set ? ;`
+    conn.query(sql, insertcat, (err, result) => {
         if (err) throw err;
         res.send(result)
+
     })
 })
+
+// API untuk edit categori via postman cara aksesnya via params dengan menambahkan id nama kategori yang dimkasud untuk di edit
+
+app.put('/editcat/:id', (req,res) => {
+    var editcat = req.body;
+    var sql = `select id FROM categories WHERE id = '${req.params.id}'`;
+    conn.query(sql, (err, results) => {
+        if (err) throw err;
+        if(results.length > 0) {
+            var sql = `update categories set ? where id = '${req.params.id}';`
+            conn.query(sql, editcat, (err1, results1) => {
+                if (err) throw err;
+                res.send(results1);
+            });
+        } else {
+            res.send(results);
+        }
+    });
+});
 
 // API untuk menampilkan data movie dan category dari hasil join antara tabel movies dan categoies
 app.get('/movieandcategory', (req, res) => {
@@ -128,73 +209,5 @@ app.delete("/delete/:idmovie", (req, res) => {
         res.send(results)
     })
 })
-
-// app.get('/productbycategory/', (req, res) => {
-//     var namaCat = req.query.getcategory;
-//     console.log(namaCat)
-//     var namaPro = req.query.productname;
-//     console.log(namaPro)
-//     var sql = `select z.id as idZara, z.nama as namaZara,
-//                 harga, description, cz.id as idCategory,
-//                 cz.nama as namaCategory
-//                 from zara z
-//                 join zaracatzara zcz 
-//                 on z.id = zcz.idzara
-//                 join catzara cz
-//                 on zcz.idcatzara = cz.id
-//                 where cz.nama = '${namaCat}' and z.nama = '${namaPro}';`
-
-//     conn.query(sql, (err, results) => {
-//         if (err) throw err;
-//         res.send(results)
-//     })
-// })
-
-// app.get('/product', (req, res) => {
-//     var sql = `select z.id as idZara, z.nama as namaZara,
-//                 harga, description, cz.id as idCategory,
-//                 cz.nama as namaCategory
-//                 from zara z
-//                 join zaracatzara zcz 
-//                 on z.id = zcz.idzara
-//                 join catzara cz
-//                 on zcz.idcatzara = cz.id;`
-
-//     conn.query(sql, (err, results) => {
-//         if (err) throw err;
-//         res.send(results)
-//     })
-// })
-
-// app.get("/delete/:idzara", (req, res) => {
-//     var deleting = req.params.idzara;
-//     console.log(deleting)
-//     var sql = `DELETE zaracatzara FROM zaracatzara
-//                 JOIN catzara ON zaracatzara.idcatzara = catzara.id
-//                 JOIN zara ON zaracatzara.idzara = zara.id
-//                 WHERE zara.id = '${deleting}';`
-//     conn.query(sql, (err, results) => {
-//         if (err) throw err;
-//         res.send(results)
-//     })
-// })
-
-// app.get('/productbynama/:nama', (req, res) => {
-//     var namaZara = req.params.nama
-//     var sql = `select z.id as idZara, z.nama as namaZara,
-//     harga, description, cz.id as idCategory,
-//     cz.nama as namaCategory
-//     from zara z
-//     join zaracatzara zcz 
-//     on z.id = zcz.idzara
-//     join catzara cz
-//     on zcz.idcarzara = cz.id
-//     where z.nama = '${namaZara}';`
-
-//     conn.query(sql, (err, result) => {
-//         if (err) throw err;
-//         res.send(result)
-//     })
-// })
 
 app.listen(port, () => console.log('API berjalan pada port ' + port))
